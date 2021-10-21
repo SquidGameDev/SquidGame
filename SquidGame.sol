@@ -65,7 +65,7 @@ contract SquidGame is Ownable {
             
         } else {
             games[msg.sender].winAmount = 0;
-            games[msg.sender].lostStep = 3;
+            games[msg.sender].lostStep = games[msg.sender].stepsLeft;
             games[msg.sender].stepsLeft = 0;
             
             emit GameFinished(msg.sender, 0);
@@ -79,6 +79,7 @@ contract SquidGame is Ownable {
         
         _safeSquidTransfer(msg.sender, games[msg.sender].winAmount);
         
+        games[msg.sender].winAmount = 0;
         games[msg.sender].stepsLeft = 0;
         
         emit GameFinished(msg.sender, games[msg.sender].winAmount);
