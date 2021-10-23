@@ -52,7 +52,7 @@ contract MasterChef is ReentrancyGuard, Ownable {
     uint256 public totalAllocPoint = 0;
     // The block number when Squid mining starts.
     uint256 public startBlock;
-    uint256 public constant HARVEST_INTERVAL = 1 minutes;//8 hours;
+    uint256 public constant HARVEST_INTERVAL = 8 hours;
 
     // Referrers
     mapping (address => address) public referrer;
