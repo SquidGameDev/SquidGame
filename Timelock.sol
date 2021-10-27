@@ -7,18 +7,10 @@
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
 // 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Ctrl+f for XXX to see all the modifications.
 
-// XXX: pragma solidity ^0.5.16;
-pragma solidity ^0.8.0;
-
-// XXX: import "./SafeMath.sol";
-// import "@openzeppelin/contracts/math/SafeMath.sol";
+pragma solidity ^0.8.9;
 
 contract Timelock {
-    // using SafeMath for uint;
-
     event NewAdmin(address indexed newAdmin);
     event NewPendingAdmin(address indexed newPendingAdmin);
     event NewDelay(uint indexed newDelay);
@@ -37,7 +29,7 @@ contract Timelock {
 
     mapping (bytes32 => bool) public queuedTransactions;
 
-    constructor(address admin_, uint delay_) public {
+    constructor(address admin_, uint delay_) {
         require(delay_ >= MINIMUM_DELAY, "Timelock::constructor: Delay must exceed minimum delay.");
         require(delay_ <= MAXIMUM_DELAY, "Timelock::constructor: Delay must not exceed maximum delay.");
 
@@ -46,7 +38,6 @@ contract Timelock {
         admin_initialized = false;
     }
 
-    // XXX: function() external payable { }
     receive() external payable { }
 
     function setDelay(uint delay_) public {
@@ -117,7 +108,6 @@ contract Timelock {
             callData = abi.encodePacked(bytes4(keccak256(bytes(signature))), data);
         }
 
-        // solium-disable-next-line security/no-call-value
         (bool success, bytes memory returnData) = target.call{value:value}(callData);
         require(success, "Timelock::executeTransaction: Transaction execution reverted.");
 
@@ -127,7 +117,6 @@ contract Timelock {
     }
 
     function getBlockTimestamp() internal view returns (uint) {
-        // solium-disable-next-line security/no-block-members
         return block.timestamp;
     }
 }
