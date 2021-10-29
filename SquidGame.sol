@@ -20,6 +20,7 @@ contract SquidGame is ReentrancyGuard, Ownable {
         uint amount;
         uint blockNumber;
         uint winAmount;
+        uint lastWinAmount;
         uint startTime;
     }
 
@@ -72,7 +73,6 @@ contract SquidGame is ReentrancyGuard, Ownable {
 
         if (isWin) {
             game.blockNumber = block.number + 1;
-
             game.winAmount = game.amount * winPercents[game.stepsLeft] / 100;
 
             if (game.stepsLeft == 0) {
@@ -80,6 +80,7 @@ contract SquidGame is ReentrancyGuard, Ownable {
             }
         } else {
             game.winAmount = 0;
+            game.lastWinAmount = 0;
             game.stepsLeft = 0;
 
             _safeSquidTransfer(BURN_ADDRESS, game.amount);
@@ -102,10 +103,11 @@ contract SquidGame is ReentrancyGuard, Ownable {
             _safeSquidTransfer(BURN_ADDRESS, game.amount - game.winAmount);
         }
 
-        emit GameFinished(msg.sender, game.pid, game.winAmount);
-
+        game.lastWinAmount = game.winAmount;
         game.winAmount = 0;
         game.stepsLeft = 0;
+
+        emit GameFinished(msg.sender, game.pid, game.lastWinAmount);
     }
 
     function _safeSquidTransfer(address _to, uint _amount) internal {
