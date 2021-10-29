@@ -2,11 +2,12 @@
 
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract SquidGame is Ownable {
+contract SquidGame is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     uint public constant GAME_TIMEOUT = 10 minutes;
@@ -23,7 +24,7 @@ contract SquidGame is Ownable {
 
     mapping(address => Game) public games;
     mapping(address => mapping (uint8 => uint8)) public choises;
-    uint[] public winPercents = [100,30,10,0];
+    uint[] public winPercents = [100,30,10];
     IERC20 public immutable squid;
 
     event GameStarted(address indexed to, uint value);
@@ -87,7 +88,7 @@ contract SquidGame is Ownable {
         emit Step(msg.sender, games[msg.sender].stepsLeft, isWin);
     }
 
-    function finishGame() public {
+    function finishGame() public nonReentrant {
         Game storage game = games[msg.sender];
 
         require(game.startTime + GAME_TIMEOUT > block.timestamp, "game timeout");
@@ -99,10 +100,10 @@ contract SquidGame is Ownable {
             _safeSquidTransfer(BURN_ADDRESS, game.amount - game.winAmount);
         }
 
+        emit GameFinished(msg.sender, game.winAmount);
+
         game.winAmount = 0;
         game.stepsLeft = 0;
-
-        emit GameFinished(msg.sender, game.winAmount);
     }
 
     function _safeSquidTransfer(address _to, uint _amount) internal {

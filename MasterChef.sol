@@ -33,8 +33,12 @@ contract MasterChef is ReentrancyGuard, Ownable {
         uint16 depositFeeBP;      // Deposit fee in basis points
     }
 
-    SquidToken public squid;
-    SquidGame public squidGame;
+    uint public constant HARVEST_INTERVAL = 8 hours;
+
+    // The block number when Squid mining starts.
+    uint public immutable startBlock;
+    SquidToken public immutable squid;
+    SquidGame public immutable squidGame;
 
     // Squid tokens created per block.
     uint public squidPerBlock = 1e18;
@@ -46,9 +50,6 @@ contract MasterChef is ReentrancyGuard, Ownable {
     mapping (uint => mapping (address => UserInfo)) public userInfo;
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint public totalAllocPoint = 0;
-    // The block number when Squid mining starts.
-    uint public startBlock;
-    uint public constant HARVEST_INTERVAL = 8 hours;
 
     // Referrers
     mapping (address => address) public referrer;
@@ -67,11 +68,11 @@ contract MasterChef is ReentrancyGuard, Ownable {
     event Claim(address indexed user, uint indexed pid, uint amount);
     event EmergencyWithdraw(address indexed user, uint indexed pid, uint amount);
 
-    event AddPool(uint _allocPoint, IERC20 _lpToken, uint16 _depositFeeBP, bool _withUpdate);
-    event SetPool(uint _pid, uint _allocPoint, uint16 _depositFeeBP, bool _withUpdate);
+    event AddPool(uint indexed pid, uint allocPoint, IERC20 lpToken, uint16 depositFeeBP, bool withUpdate);
+    event SetPool(uint indexed pid, uint allocPoint, uint16 depositFeeBP, bool withUpdate);
 
-    event SetFee(address fee);
-    event UpdateEmissionRate(uint _squidPerBlock);
+    event SetFee(address indexed fee);
+    event UpdateEmissionRate(uint squidPerBlock);
 
     constructor (
         SquidToken _squid,
@@ -80,6 +81,7 @@ contract MasterChef is ReentrancyGuard, Ownable {
         uint _startBlock
     ) {
         require(_feeAddress != address(0), "address can't be 0");
+        require(_squid.decimals() == 18, "invalid squid token");
 
         squid = _squid;
         squidGame = _squidGame;
@@ -114,7 +116,7 @@ contract MasterChef is ReentrancyGuard, Ownable {
             depositFeeBP: _depositFeeBP
         }));
 
-        emit AddPool(_allocPoint, _lpToken, _depositFeeBP, _withUpdate);
+        emit AddPool(poolInfo.length - 1, _allocPoint, _lpToken, _depositFeeBP, _withUpdate);
     }
 
     // Update the given pool's SQUID allocation point and deposit fee. Can only be called by the owner.
@@ -181,8 +183,9 @@ contract MasterChef is ReentrancyGuard, Ownable {
     function deposit(uint _pid, uint _amount, address _ref) external nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
+
         _updatePool(_pid);
-        _keepPending(_pid, msg.sender);
+        user.rewardKept += _pendingSquid(_pid, msg.sender);
 
         if(_amount > 0) {
             if (user.nextHarvestUntil == 0) {
@@ -191,7 +194,7 @@ contract MasterChef is ReentrancyGuard, Ownable {
 
             uint balance = pool.lpToken.balanceOf(address(this));
 
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+            pool.lpToken.safeTransferFrom(msg.sender, address(this), _amount);
 
             uint amount = pool.lpToken.balanceOf(address(this)) - balance;
 
@@ -239,10 +242,10 @@ contract MasterChef is ReentrancyGuard, Ownable {
         require(user.amount >= _amount, "withdraw: not good");
 
         _updatePool(_pid);
-        _keepPending(_pid, msg.sender);
+        user.rewardKept += _pendingSquid(_pid, msg.sender);
 
         if (_amount > 0) {
-            pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            pool.lpToken.safeTransfer(msg.sender, _amount);
             user.amount -= _amount;
             pool.amount -= _amount;
         }
@@ -264,7 +267,7 @@ contract MasterChef is ReentrancyGuard, Ownable {
         user.rewardKept = 0;
         user.nextHarvestUntil = 0;
 
-        pool.lpToken.safeTransfer(address(msg.sender), amount);
+        pool.lpToken.safeTransfer(msg.sender, amount);
         emit EmergencyWithdraw(msg.sender, _pid, amount);
     }
 
@@ -309,15 +312,8 @@ contract MasterChef is ReentrancyGuard, Ownable {
         user.nextHarvestUntil = block.timestamp + HARVEST_INTERVAL;
     }
 
-    function _keepPending(uint _pid, address _user) internal {
-        UserInfo storage user = userInfo[_pid][_user];
-        user.rewardKept += pendingSquid(_pid, _user);
-    }
-
     function pendingSquid(uint _pid, address _user) public view returns (uint) {
-        UserInfo storage user = userInfo[_pid][_user];
-
-        return user.rewardKept + _pendingSquid(_pid, _user);
+        return userInfo[_pid][_user].rewardKept + _pendingSquid(_pid, _user);
     }
 
     // DO NOT includes kept reward
