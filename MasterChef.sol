@@ -302,7 +302,7 @@ contract MasterChef is ReentrancyGuard, Ownable {
         uint harvest = pending / 10;
         _safeSquidTransfer(msg.sender, harvest);
         _safeSquidTransfer(address(squidGame), pending - harvest);
-        squidGame.startGame(msg.sender, pending - harvest);
+        squidGame.startGame(msg.sender, _pid, pending - harvest);
 
         emit Claim(msg.sender, _pid, pending);
 

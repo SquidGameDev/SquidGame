@@ -15,6 +15,7 @@ contract SquidGame is ReentrancyGuard, Ownable {
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     struct Game {
+        uint pid;
         uint8 stepsLeft;
         uint amount;
         uint blockNumber;
@@ -27,15 +28,15 @@ contract SquidGame is ReentrancyGuard, Ownable {
     uint[] public winPercents = [100,30,10];
     IERC20 public immutable squid;
 
-    event GameStarted(address indexed to, uint value);
-    event GameFinished(address indexed to, uint value);
+    event GameStarted(address indexed to, uint indexed pid, uint value);
+    event GameFinished(address indexed to, uint indexed pid, uint value);
     event Step(address indexed to, uint8 step, bool isWin);
 
     constructor(IERC20 _squid) {
         squid = _squid;
     }
 
-    function startGame(address sender, uint amount) external onlyOwner {
+    function startGame(address sender, uint pid, uint amount) external onlyOwner {
         require(
             games[sender].stepsLeft == 0 || games[sender].startTime + GAME_TIMEOUT < block.timestamp,
             "finish previous game first"
@@ -46,13 +47,14 @@ contract SquidGame is ReentrancyGuard, Ownable {
             _safeSquidTransfer(BURN_ADDRESS, games[sender].amount);
         }
 
+        games[sender].pid = pid;
         games[sender].amount = amount;
         games[sender].stepsLeft = MAX_STEPS;
         games[sender].blockNumber = block.number + 1;
         games[sender].winAmount = 0;
         games[sender].startTime = block.timestamp;
 
-        emit GameStarted(sender, amount);
+        emit GameStarted(sender, pid, amount);
     }
 
     function step(uint8 choise) external {
@@ -82,7 +84,7 @@ contract SquidGame is ReentrancyGuard, Ownable {
 
             _safeSquidTransfer(BURN_ADDRESS, game.amount);
 
-            emit GameFinished(msg.sender, 0);
+            emit GameFinished(msg.sender, game.pid, 0);
         }
 
         emit Step(msg.sender, games[msg.sender].stepsLeft, isWin);
@@ -100,7 +102,7 @@ contract SquidGame is ReentrancyGuard, Ownable {
             _safeSquidTransfer(BURN_ADDRESS, game.amount - game.winAmount);
         }
 
-        emit GameFinished(msg.sender, game.winAmount);
+        emit GameFinished(msg.sender, game.pid, game.winAmount);
 
         game.winAmount = 0;
         game.stepsLeft = 0;
