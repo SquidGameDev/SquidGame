@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract SquidToken is ERC20, Ownable  {
 
-    constructor() ERC20("SQUID", "Squid Token") { }
+    constructor() ERC20("Squid Token", "SQUID") { }
 
     function mint(address account, uint amount) public onlyOwner {
         _mint(account, amount);
